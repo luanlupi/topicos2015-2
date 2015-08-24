@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeType;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -31,6 +32,7 @@ public class TelaJogo extends TelaBase {
     private Stage palco;
     private BitmapFont fonte;
     private Label lbPontuacao;
+    private Label lbGameOver;
     private Image jogador;
     private Texture testuraJogador;
     private Texture testuraJogadorDireito;
@@ -103,6 +105,10 @@ public class TelaJogo extends TelaBase {
 
         lbPontuacao = new Label("0 pontos", lbEstilo);
         palco.addActor(lbPontuacao);
+
+        lbGameOver = new Label("Game Over" , lbEstilo);
+        lbGameOver.setVisible(false);
+        palco.addActor(lbGameOver);
     }
 
     /**
@@ -121,12 +127,22 @@ public class TelaJogo extends TelaBase {
     public void render(float delta) {
         Gdx.gl.glClearColor(.15f, .15f, .25f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        lbPontuacao.setPosition(10, camera.viewportHeight - 20);
-        capturaTeclas();
-        atualizarJogador(delta);
-        atualizarTiros(delta);
-        atualizarMateoros(delta);
 
+        lbPontuacao.setPosition(10, camera.viewportHeight - 20);
+        lbPontuacao.setText(pontuacao + "pontos" );
+
+        lbGameOver.setPosition(camera.viewportWidth / 2 - lbGameOver.getWidth() / 2, camera.viewportHeight / 2);
+        lbGameOver.setVisible(gameOver == true);
+
+        if(gameOver == false) {
+
+            capturaTeclas();
+            atualizarJogador(delta);
+            atualizarTiros(delta);
+            atualizarMateoros(delta);
+            detectarColisoes(meteoros1, 5);
+            detectarColisoes(meteoros2, 15);
+        }
         //atualiza a situacao do palco
 
         palco.act(delta);
@@ -134,28 +150,86 @@ public class TelaJogo extends TelaBase {
         palco.draw();
     }
 
-    private void atualizarMateoros(float delta) {
-        int tipo = MathUtils.random(1,3);
-        if (tipo == 1) {
-            //criar meteoro 1
-            Image meteoro = new Image(texturaMeteoro1);
-            float x = MathUtils.random(0, camera.viewportWidth - meteoro.getWidth());
-            float y = MathUtils.random(camera.viewportHeight, camera.viewportHeight * 2);
-            meteoro.setPosition(x, y);
-            meteoros1.add(meteoro);
-            palco.addActor(meteoro);
-        }else {
-            //criar meteoro 2
+    private Rectangle recJogador  = new Rectangle();
+    private Rectangle recTiros  = new Rectangle();
+    private Rectangle recMeteoro  = new Rectangle();
+    private  int pontuacao = 0;
+    private  boolean gameOver = false;
+
+    private void detectarColisoes(Array<Image> meteoros, int valePonto) {
+        recJogador.set(jogador.getX(), jogador.getY(), jogador.getWidth(), jogador.getImageHeight());
+        //detecta colisoes com os tiros
+        for (Image meteoro : meteoros){
+            recMeteoro.set(meteoro.getX(),meteoro.getY(), meteoro.getWidth(), meteoro.getHeight());
+
+            for (Image tiro : tiros) {
+                recTiros.set(tiro.getX(), tiro.getY(), tiro.getWidth(), tiro.getImageHeight());
+                if(recMeteoro.overlaps(recTiros)){
+                    //aki ocorre uma colisao do tiro com o meteoro 1
+                    pontuacao += valePonto;
+                    tiro.remove(); // remove  o palco
+                    tiros.removeValue(tiro, true);// remove da lista
+                    meteoro.remove();//remove do palco
+                    meteoros.removeValue(meteoro, true);//remove da lista
+                }
+            }
+            //detecta colisao com o player
+            if(recJogador.overlaps(recMeteoro)){
+                //ocoorre colisao do jogador com meteoro 1
+                gameOver = true;
+            }
+
         }
-        float velocidade = 200;
-        for (Image meteoro : meteoros1){
-            float x = meteoro.getX();
-            float y = meteoro.getY() - velocidade * delta;
-            meteoro.setPosition(x, y);
-        }
+
     }
 
-    private final float MAX_INTERVALO_TIROS =0.4f; //minimo de tempo entre os tiros.
+    private void atualizarMateoros(float delta) {
+        int qtdMeteoros =  meteoros1.size + meteoros2.size; // retorna quantidade de meteoros criados
+        if (qtdMeteoros < 15) {
+
+            int tipo = MathUtils.random(1, 4); //retorna 1 ou 2  alertoreamento
+            if (tipo == 1) {
+                //criar meteoro 1
+                Image meteoro = new Image(texturaMeteoro1);
+                float x = MathUtils.random(0, camera.viewportWidth - meteoro.getWidth());
+                float y = MathUtils.random(camera.viewportHeight, camera.viewportHeight * 2);
+                meteoro.setPosition(x, y);
+                meteoros1.add(meteoro);
+                palco.addActor(meteoro);
+            } else  if (tipo == 2){
+                //criar meteoro 2
+                Image meteoro = new Image(texturaMeteoro2);
+                float x = MathUtils.random(0, camera.viewportWidth - meteoro.getWidth());
+                float y = MathUtils.random(camera.viewportHeight, camera.viewportHeight * 2);
+                meteoro.setPosition(x, y);
+                meteoros2.add(meteoro);
+                palco.addActor(meteoro);
+            }
+        }
+            float velocidade1 = 100; // 200 pixel por segundo
+            for (Image meteoro : meteoros1) {
+                float x = meteoro.getX();
+                float y = meteoro.getY() - velocidade1 * delta;
+                meteoro.setPosition(x, y);
+                if (meteoro.getY() + meteoro.getHeight() < 0) {
+                    meteoro.remove(); //remove do palco
+                    meteoros1.removeValue(meteoro, true); // remove da lista
+                }
+            }
+            float velocidade2 = 150; // 200 pixel por segundo
+            for (Image meteoro : meteoros2) {
+                float x = meteoro.getX();
+                float y = meteoro.getY() - velocidade2 * delta;
+                meteoro.setPosition(x, y);
+                if (meteoro.getY() + meteoro.getHeight() < 0) {
+                    meteoro.remove(); //remove do palco
+                    meteoros2.removeValue(meteoro, true); // remove da lista
+                }
+            }
+
+    }
+
+    private final float MAX_INTERVALO_TIROS =0.3f; //minimo de tempo entre os tiros.
     private float intervaloTiros = 0; //tempo acumulado entre os tiros
 
     private void atualizarTiros(float delta) {
