@@ -3,6 +3,8 @@ package br.grupointegrado.SpaceInvaders;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.assets.loaders.BitmapFontLoader;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -52,6 +54,10 @@ public class TelaJogo extends TelaBase {
     private Array<Texture> texturasExplosao = new Array<Texture>();
     private Array<Explosao> explosaes = new Array<Explosao>();
 
+    private Sound somTiro;
+    private Sound somExplosao;
+    private Sound somGameOver;
+    private Music musicaFundo;
 
 
     /**
@@ -72,12 +78,19 @@ public class TelaJogo extends TelaBase {
         palco = new Stage(new FillViewport(camera.viewportWidth, camera.viewportHeight, camera));
         palcoInformacoes = new Stage(new FillViewport(camera.viewportWidth, camera.viewportHeight, camera));
 
-
+        initSons();
         initTesturas();
         initfonte();
         initInformacoes();
         initJogador();
 
+    }
+    private void initSons() {
+        somTiro = Gdx.audio.newSound(Gdx.files.internal("sounds/shoot.mp3"));
+        somExplosao = Gdx.audio.newSound(Gdx.files.internal("sounds/explosion.mp3"));
+        somGameOver = Gdx.audio.newSound(Gdx.files.internal("sounds/gameover.mp3"));
+        musicaFundo = Gdx.audio.newMusic(Gdx.files.internal("sounds/background.mp3"));
+        musicaFundo.setLooping(true);
     }
 
     private void initTesturas() {
@@ -161,6 +174,8 @@ public class TelaJogo extends TelaBase {
 
         atualizarExplosoes(delta);
         if(gameOver == false) {
+            if(!musicaFundo.isPlaying()) //se  nao esta tocando
+                musicaFundo.play(); // incluir musica
 
             capturaTeclas();
             atualizarJogador(delta);
@@ -168,6 +183,9 @@ public class TelaJogo extends TelaBase {
             atualizarMateoros(delta);
             detectarColisoes(meteoros1, 5);
             detectarColisoes(meteoros2, 15);
+        }else {
+            if(musicaFundo.isPlaying()) // se esta tocando
+            musicaFundo.stop();  //inicia a musica
         }
         //atualiza a situacao do palco
 
@@ -214,13 +232,15 @@ public class TelaJogo extends TelaBase {
                     tiros.removeValue(tiro, true);// remove da lista
                     meteoro.remove();//remove do palco
                     meteoros.removeValue(meteoro, true);//remove da lista
-                    criarExplosao(meteoro.getX(),meteoro.getY());
+                    criarExplosao(meteoro.getX() + meteoro.getWidth(), meteoro.getY() + meteoro.getHeight() / 2);
+                    somExplosao.play();
                 }
             }
             //detecta colisao com o player
             if(recJogador.overlaps(recMeteoro)){
                 //ocoorre colisao do jogador com meteoro 1
                 gameOver = true;
+                somGameOver.play();
             }
 
         }
@@ -235,7 +255,8 @@ public class TelaJogo extends TelaBase {
 
     private void criarExplosao(float x, float y) {
         Image ator = new Image(texturasExplosao.get(0));
-        ator.setPosition(x, y);
+        ator.setPosition(x - ator.getWidth() / 2,
+                y - ator.getHeight() / 2);
         palco.addActor(ator);
 
         Explosao explosao = new Explosao(ator, texturasExplosao);
@@ -289,7 +310,7 @@ public class TelaJogo extends TelaBase {
 
     }
 
-    private final float MAX_INTERVALO_TIROS =0.1f; //minimo de tempo entre os tiros.
+    private final float MAX_INTERVALO_TIROS =0.3f; //minimo de tempo entre os tiros.
     private float intervaloTiros = 0; //tempo acumulado entre os tiros
 
     private void atualizarTiros(float delta) {
@@ -305,6 +326,7 @@ public class TelaJogo extends TelaBase {
                 tiros.add(tiro);
                 palco.addActor(tiro);
                 intervaloTiros = 0;
+                somTiro.play();
             }
 
         }
@@ -427,6 +449,10 @@ public class TelaJogo extends TelaBase {
         texturaMeteoro2.dispose();
         for(Texture text : texturasExplosao){
             text.dispose();
+            somTiro.dispose();
+            somExplosao.dispose();
+            somGameOver.dispose();
+            musicaFundo.dispose();
         }
     }
 }
