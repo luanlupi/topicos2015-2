@@ -1,7 +1,9 @@
 package br.grupointegrado.SpaceInvaders;
 
+import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.assets.loaders.BitmapFontLoader;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
@@ -17,6 +19,7 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeType;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -24,6 +27,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.SpriteDrawable;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.FillViewport;
 
+import java.util.Vector;
 
 
 /**
@@ -186,6 +190,7 @@ public class TelaJogo extends TelaBase {
         }else {
             if(musicaFundo.isPlaying()) // se esta tocando
             musicaFundo.stop();  //inicia a musica
+            reiniciarJogo();
         }
         //atualiza a situacao do palco
 
@@ -195,6 +200,25 @@ public class TelaJogo extends TelaBase {
         //desenha o palco de informacoes
         palcoInformacoes.act(delta);
         palcoInformacoes.draw();
+    }
+
+    /**
+     * Verfica se o ususario pressionou Enter para reinicar o Jogo
+     */
+
+    private void reiniciarJogo() {
+        if(Gdx.input.isKeyJustPressed(Input.Keys.ENTER)){
+            Preferences preferences = Gdx.app.getPreferences("spaceInvaders");
+            int pontuacaoMaxima = preferences.getInteger("pontuacao_maxima", 0);
+            //verifica se nova pontuacao e a maior que a pontuacao maxima
+            if(pontuacao > pontuacaoMaxima){
+                preferences.putInteger("pontuacao_maxima", pontuacao);
+                preferences.flush();
+            }
+            //volta para a tela de menu
+            game.setScreen(new TelaMenu(game));
+        }
+
     }
 
     private void atualizarExplosoes(float delta) {
@@ -295,6 +319,7 @@ public class TelaJogo extends TelaBase {
                 if (meteoro.getY() + meteoro.getHeight() < 0) {
                     meteoro.remove(); //remove do palco
                     meteoros1.removeValue(meteoro, true); // remove da lista
+                    pontuacao = pontuacao - 30;
                 }
             }
             float velocidade2 = 150; // 200 pixel por segundo
@@ -305,6 +330,8 @@ public class TelaJogo extends TelaBase {
                 if (meteoro.getY() + meteoro.getHeight() < 0) {
                     meteoro.remove(); //remove do palco
                     meteoros2.removeValue(meteoro, true); // remove da lista
+                    pontuacao = pontuacao - 60;
+
                 }
             }
 
@@ -393,16 +420,54 @@ public class TelaJogo extends TelaBase {
         indoEsquerdo = false;
         atirando = false;
 
-        if(Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+
+
+        if(Gdx.input.isKeyPressed(Input.Keys.LEFT) || clicouEsquerda()) {
             indoEsquerdo = true;
 
         }
-        if(Gdx.input.isKeyPressed(Input.Keys.RIGHT)){
+        if(Gdx.input.isKeyPressed(Input.Keys.RIGHT) || clicouDireita()){
             indoDireita = true;
         }
-        if (Gdx.input.isKeyPressed(Input.Keys.SPACE)) {
+        if (Gdx.input.isKeyPressed(Input.Keys.SPACE) ||
+                Gdx.app.getType() == Application.ApplicationType.Android) {
             atirando = true;
         }
+    }
+
+    private boolean clicouDireita() {
+        if (Gdx.input.isTouched()) {
+            Vector3 posicao = new Vector3();
+            //captura clique/toque na tela do windows
+            posicao.x = Gdx.input.getX();
+            posicao.y = Gdx.input.getY();
+            //converte para uma cordenada no jogo
+            posicao = camera.unproject(posicao);
+            float meio = camera.viewportWidth / 2;
+
+            if (posicao.x > meio) {
+                return true;
+            }
+        }
+            return false;
+        }
+
+
+    private boolean clicouEsquerda() {
+        if (Gdx.input.isTouched()) {
+            Vector3 posicao = new Vector3();
+            //captura clique/toque na tela do windows
+            posicao.x = Gdx.input.getX();
+            posicao.y = Gdx.input.getY();
+            //converte para uma cordenada no jogo
+            posicao = camera.unproject(posicao);
+            float meio = camera.viewportWidth / 2;
+
+            if (posicao.x < meio) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
